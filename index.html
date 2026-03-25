@@ -103,15 +103,15 @@
     <main class="max-w-[1700px] mx-auto px-6 sm:px-10 py-12">
         
         <!-- Upload Zone -->
-        <div id="upload-zone" class="group mb-16 border-[5px] border-dashed rounded-[3rem] p-20 text-center transition-all duration-500 cursor-pointer border-slate-200 bg-white hover:border-indigo-400 hover:shadow-2xl">
+        <div id="upload-zone" class="group mb-16 border-[5px] border-dashed rounded-[3rem] p-24 text-center transition-all duration-500 cursor-pointer border-slate-200 bg-white hover:border-indigo-400 hover:shadow-2xl">
             <input type="file" id="file-input" class="hidden" accept=".csv,.txt">
             <div class="bg-gradient-to-br from-indigo-500 to-blue-700 w-28 h-28 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-2xl group-hover:scale-110 transition-transform">
                 <i data-lucide="file-up" class="w-14 h-14 text-white"></i>
             </div>
             <h2 class="text-4xl font-black mb-6 tracking-tight text-slate-800" id="upload-title">匯入 CB 資訊看板</h2>
             <p class="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-                自動門檻：<span class="text-indigo-600 font-black">轉換價值 > 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 > 30%</span>。<br/>
-                判定邏輯：<span class="text-indigo-600 font-bold underline">CBAS 採用 T-1 日數據對比 T-1~T-11 區間</span>；其餘採今日對比過往區間。
+                自動門檻：<span class="text-indigo-600 font-black">轉換價值 &gt; 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 &gt; 30%</span>。<br/>
+                判定邏輯：<span class="text-indigo-600 font-bold underline">CBAS 欄位與判定採 T-1 數據</span>；成交量與參考價採今日 (T-0) 數據。
             </p>
         </div>
 
@@ -179,8 +179,8 @@
                     <div>
                         <h2 id="list-title" class="text-3xl font-black tracking-tight text-slate-800">監控名單</h2>
                         <div class="flex items-center gap-3 mt-2">
-                            <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">轉換價值 > 85</span>
-                            <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">剩餘比例 > 30%</span>
+                            <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">轉換價值 &gt; 85</span>
+                            <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">剩餘比例 &gt; 30%</span>
                         </div>
                     </div>
                 </div>
@@ -215,7 +215,7 @@
                                 <div class="flex items-center justify-center gap-3">投信買超 <span id="sort-trust"></span></div>
                             </th>
                             <th class="px-12 py-8 text-right cursor-pointer group hover:text-indigo-600 bg-indigo-50/40" onclick="handleSort('cbas')">
-                                <div class="flex items-center justify-end gap-3">CBAS 拆解 <span id="sort-cbas"></span></div>
+                                <div class="flex items-center justify-end gap-3">CBAS 拆解 (T-1) <span id="sort-cbas"></span></div>
                             </th>
                         </tr>
                     </thead>
@@ -258,7 +258,7 @@
         <div class="h-[2px] w-full mb-12 opacity-10 bg-slate-200 dark:bg-slate-700" id="footer-line"></div>
         <p class="text-sm font-black text-slate-400 uppercase tracking-[0.5em] mb-4">Quant Edge Financial Intelligence Dashboard</p>
         <p class="text-xs font-bold text-slate-500 italic opacity-60">
-            篩選基準：轉換價值 > 85、剩餘比例 > 30% | HTML 專業版 v3.3
+            篩選基準：轉換價值 &gt; 85、剩餘比例 &gt; 30% | HTML 專業版 v3.4
         </p>
     </footer>
 
@@ -362,7 +362,6 @@
                 /**
                  * 判定邏輯：
                  * 1. 一般新高判定：拿「今日 (s[0])」去比較「前一日開始往前推算的歷史區間」
-                 * 2. CBAS 特殊新高判定：拿「前 1 日 (s[1])」去比較「前 1 日至前 11 日 (s[1]~s[11])」之最高值
                  */
                 const isHigh = (series, historicalDays) => {
                     if (series.length <= historicalDays) return false; 
@@ -391,10 +390,11 @@
                     premium: cols[idxPrem] || '0%',
                     remaining: cols[idxRem] || '0%',
                     trust: cleanVal(cols[trustIdx[0]]),
-                    cbas: cbasS[0] || 0,
-                    // 根據需求：CBAS 採特定 T-1 判定
+                    // 修改：CBAS 欄位固定顯示前一日 (T-1) 數值
+                    cbas: cbasS[1] || 0,
+                    // CBAS 判定：前 1 日數據對比 T-1~T-11
                     isCbas10High: isCbasHigh(cbasS),
-                    // 其餘保持今日對比過往區間
+                    // 參考價判定：維持今日對比過往區間
                     isVol10High: isHigh(volS, 10),
                     isRef20High: isHigh(refS, 20),
                     premiumVal: cleanVal(cols[idxPrem])
