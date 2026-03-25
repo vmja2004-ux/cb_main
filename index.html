@@ -111,7 +111,7 @@
             <h2 class="text-4xl font-black mb-6 tracking-tight text-slate-800" id="upload-title">匯入 CB 資訊看板</h2>
             <p class="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
                 自動篩選門檻：<span class="text-indigo-600 font-black">轉換價值 > 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 > 30%</span>。<br/>
-                建議匯入包含日期序列之專業報表以獲得新高判定。
+                新高判定：將當前數值與<span class="text-indigo-600 font-bold">前一日開始往前推算</span>的歷史區間進行比較。
             </p>
         </div>
 
@@ -146,7 +146,7 @@
                     <span id="stat-cbas" class="text-6xl font-black tracking-tighter text-emerald-600">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-900">CBAS 10 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-500">主力籌碼持續增長中</p>
+                <p class="text-base mt-3 font-medium text-slate-500">當前拆解數值超越過去 9 日</p>
                 <div class="absolute bottom-0 left-0 w-full h-2 bg-emerald-500"></div>
             </div>
 
@@ -156,7 +156,7 @@
                     <span id="stat-vol" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">成交量 10 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">市場人氣噴發指標</p>
+                <p class="text-base mt-3 font-medium text-slate-400">市場流動性顯著爆發</p>
             </div>
 
             <div onclick="setActiveTab('ref_high')" id="tab-ref" class="stat-tab group cursor-pointer p-10 rounded-[2.5rem] border-2 border-slate-100 bg-white hover:border-amber-300 transition-all duration-300 relative overflow-hidden">
@@ -165,7 +165,7 @@
                     <span id="stat-ref" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">參考價 20 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">長期結構強勢突破</p>
+                <p class="text-base mt-3 font-medium text-slate-400">長線價格結構正式突破</p>
             </div>
         </div>
 
@@ -258,7 +258,7 @@
         <div class="h-[2px] w-full mb-12 opacity-10 bg-slate-200 dark:bg-slate-700" id="footer-line"></div>
         <p class="text-sm font-black text-slate-400 uppercase tracking-[0.5em] mb-4">Quant Edge Financial Intelligence Dashboard</p>
         <p class="text-xs font-bold text-slate-500 italic opacity-60">
-            篩選基準：轉換價值 > 85、剩餘比例 > 30% | HTML 專業版 v3.0
+            篩選基準：轉換價值 > 85、剩餘比例 > 30% | HTML 專業版 v3.1
         </p>
     </footer>
 
@@ -360,11 +360,16 @@
                 const volS = getSeries(volIdx);
                 const refS = getSeries(refIdx);
 
+                // 新高判定邏輯：今日 (index 0) vs 從前一日開始往前的區間 (index 1 ~ days-1)
                 const isHigh = (s, d) => {
-                    if (s.length < 2) return false;
-                    const cur = s[0];
-                    const hist = s.slice(1, d);
-                    return cur > 0 && cur >= Math.max(...hist);
+                    if (s.length < d) return false; // 確保歷史數據長度足夠
+                    const currentVal = s[0];
+                    // 從前一日 (索引 1) 開始抓取歷史數據區間
+                    const historicalBlock = s.slice(1, d); 
+                    const peakInHistory = Math.max(...historicalBlock);
+                    
+                    // 當前值大於 0 且超越過去最大值
+                    return currentVal > 0 && currentVal >= peakInHistory;
                 };
 
                 return {
@@ -429,20 +434,20 @@
                 t.classList.add('border-slate-100');
                 const span = t.querySelector('span');
                 span.classList.remove('text-emerald-600', 'text-blue-600', 'text-amber-600');
-                span.classList.add('text-slate-100');
+                span.classList.add('text-slate-100', 'dark:text-slate-800');
                 const iconBox = t.querySelector('.rounded-\\[1\\.5rem\\]');
                 iconBox.classList.remove('bg-emerald-500', 'bg-blue-500', 'bg-amber-500', 'text-white');
-                iconBox.classList.add('bg-slate-100', 'text-slate-400');
+                iconBox.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-400');
             });
 
             const activeT = document.getElementById('tab-' + tab.split('_')[0]);
             const color = tab === 'cbas_high' ? 'emerald' : tab === 'vol_high' ? 'blue' : 'amber';
             activeT.classList.remove('border-slate-100');
             activeT.classList.add('border-' + color + '-500', 'shadow-3xl', '-translate-y-3');
-            activeT.querySelector('span').classList.remove('text-slate-100');
+            activeT.querySelector('span').classList.remove('text-slate-100', 'dark:text-slate-800');
             activeT.querySelector('span').classList.add('text-' + color + '-600');
             const iconB = activeT.querySelector('.rounded-\\[1\\.5rem\\]');
-            iconB.classList.remove('bg-slate-100', 'text-slate-400');
+            iconB.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-400');
             iconB.classList.add('bg-' + color + '-500', 'text-white');
 
             render();
@@ -466,7 +471,14 @@
                     let aV = a[sortConfig.key];
                     let bV = b[sortConfig.key];
                     if (sortConfig.key === 'premium') { aV = a.premiumVal; bV = b.premiumVal; }
-                    return sortConfig.direction === 'desc' ? bV - aV : aV - bV;
+                    
+                    if (typeof aV === 'number' && typeof bV === 'number') {
+                        return sortConfig.direction === 'desc' ? bV - aV : aV - bV;
+                    } else {
+                        return sortConfig.direction === 'desc' 
+                            ? bV.toString().localeCompare(aV.toString()) 
+                            : aV.toString().localeCompare(bV.toString());
+                    }
                 });
             }
 
@@ -504,7 +516,7 @@
                         </td>
                         <td class="px-12 py-8 text-right">
                             <span class="font-mono font-black text-lg ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}">${item.price.toFixed(2)}</span>
-                            ${item.isRef20High ? `<div class="flex items-center justify-end gap-1 text-[11px] font-black text-amber-500 mt-2 uppercase bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">20D Breakout</div>` : ''}
+                            ${item.isRef20High ? `<div class="flex items-center justify-end gap-1 text-[11px] font-black text-amber-500 mt-2 uppercase bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 animate-pulse">20D Breakout</div>` : ''}
                         </td>
                         <td class="px-12 py-8 text-right">
                             <span class="font-mono font-black text-xl ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}">${item.conversionValue.toFixed(2)}</span>
@@ -512,7 +524,7 @@
                         <td class="px-12 py-8 text-right">
                             <div class="flex flex-col items-end gap-1">
                                 <span class="font-mono font-black text-lg ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}">${item.volume.toLocaleString()}</span>
-                                ${item.isVol10High ? `<span class="text-[11px] font-black text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 tracking-tighter">Volume High</span>` : ''}
+                                ${item.isVol10High ? `<span class="text-[11px] font-black text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 tracking-tighter shadow-sm">Volume High</span>` : ''}
                             </div>
                         </td>
                         <td class="px-12 py-8 text-right">
@@ -523,10 +535,10 @@
                         </td>
                         <td class="px-12 py-8 text-center">
                             ${item.trust !== 0 ? `
-                                <span class="inline-flex items-center justify-center min-w-[65px] px-4 py-2.5 rounded-2xl font-black text-sm border-2 ${item.trust > 0 ? 'bg-indigo-600 text-white shadow-xl border-indigo-400' : 'bg-slate-100 text-slate-500 border-slate-200'}">
+                                <span class="inline-flex items-center justify-center min-w-[65px] px-4 py-2.5 rounded-2xl font-black text-sm border-2 ${item.trust > 0 ? 'bg-indigo-600 text-white shadow-xl border-indigo-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'}">
                                     ${item.trust > 0 ? '+'+item.trust : item.trust}
                                 </span>
-                            ` : '<span class="text-slate-300 opacity-30">---</span>'}
+                            ` : '<span class="text-slate-300 opacity-30 dark:opacity-10">---</span>'}
                         </td>
                         <td class="px-12 py-8 text-right transition-colors ${isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50/40'}">
                             <div class="flex flex-col items-end gap-1.5">
@@ -553,6 +565,7 @@
                 html.classList.add('dark');
                 themeIcon.setAttribute('data-lucide', 'sun');
                 themeBtn.classList.replace('text-slate-400', 'text-amber-400');
+                themeBtn.classList.add('bg-slate-800');
             } else {
                 html.classList.remove('dark');
                 themeIcon.setAttribute('data-lucide', 'moon');
