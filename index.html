@@ -111,7 +111,7 @@
             <h2 class="text-4xl font-black mb-6 tracking-tight text-slate-800" id="upload-title">匯入 CB 資訊看板</h2>
             <p class="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
                 自動門檻：<span class="text-indigo-600 font-black">轉換價值 &gt; 85</span> 且 <span class="text-indigo-600 font-black">剩餘比例 &gt; 30%</span>。<br/>
-                判定邏輯：<span class="text-indigo-600 font-bold underline">CBAS 欄位與判定採 T-1 數據</span>；成交量與參考價採今日 (T-0) 數據。
+                判定邏輯：<span class="text-indigo-600 font-bold underline">CBAS 採 T-1 對比 T-1~T-11</span>；成交量/參考價採 <span class="text-indigo-600 font-bold underline">今日對比過去 9/19 日</span>。
             </p>
         </div>
 
@@ -156,7 +156,7 @@
                     <span id="stat-vol" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">成交量 10 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">今日成交量超越前 10 日區間</p>
+                <p class="text-base mt-3 font-medium text-slate-400">今日數據與過去 9 日比對之最高</p>
             </div>
 
             <div onclick="setActiveTab('ref_high')" id="tab-ref" class="stat-tab group cursor-pointer p-10 rounded-[2.5rem] border-2 border-slate-100 bg-white hover:border-amber-300 transition-all duration-300 relative overflow-hidden">
@@ -165,7 +165,7 @@
                     <span id="stat-ref" class="text-6xl font-black tracking-tighter text-slate-100">0</span>
                 </div>
                 <h3 class="font-black text-2xl text-slate-500">參考價 20 日新高</h3>
-                <p class="text-base mt-3 font-medium text-slate-400">今日參考價超越前 20 日區間</p>
+                <p class="text-base mt-3 font-medium text-slate-400">今日數據與過去 19 日比對之最高</p>
             </div>
         </div>
 
@@ -258,7 +258,7 @@
         <div class="h-[2px] w-full mb-12 opacity-10 bg-slate-200 dark:bg-slate-700" id="footer-line"></div>
         <p class="text-sm font-black text-slate-400 uppercase tracking-[0.5em] mb-4">Quant Edge Financial Intelligence Dashboard</p>
         <p class="text-xs font-bold text-slate-500 italic opacity-60">
-            篩選基準：轉換價值 &gt; 85、剩餘比例 &gt; 30% | HTML 專業版 v3.4
+            篩選基準：轉換價值 &gt; 85、剩餘比例 &gt; 30% | HTML 專業版 v3.5
         </p>
     </footer>
 
@@ -360,8 +360,9 @@
                 const refS = getSeries(refIdx);
 
                 /**
-                 * 判定邏輯：
-                 * 1. 一般新高判定：拿「今日 (s[0])」去比較「前一日開始往前推算的歷史區間」
+                 * 判定邏輯：今日 (s[0]) vs 過去 N 日區間 (s[1] ~ s[N])
+                 * 10 日視窗 = 今日 + 過去 9 日
+                 * 20 日視窗 = 今日 + 過去 19 日
                  */
                 const isHigh = (series, historicalDays) => {
                     if (series.length <= historicalDays) return false; 
@@ -371,11 +372,11 @@
                     return currentVal > 0 && currentVal >= peakInHistory;
                 };
 
-                // CBAS 10日新高：前 1 日數據對比前 1 日至前 11 日
+                // CBAS 10日新高：前 1 日數據 (s[1]) 對比前 1 日至前 11 日 (s[1]~s[11])
                 const isCbasHigh = (series) => {
                     if (series.length < 12) return false;
-                    const targetVal = series[1]; // 前 1 日數據
-                    const compareRange = series.slice(1, 12); // 前 1 日至前 11 日 (共 11 筆數據)
+                    const targetVal = series[1]; 
+                    const compareRange = series.slice(1, 12); 
                     const peakInRange = Math.max(...compareRange);
                     return targetVal > 0 && targetVal >= peakInRange;
                 };
@@ -390,13 +391,14 @@
                     premium: cols[idxPrem] || '0%',
                     remaining: cols[idxRem] || '0%',
                     trust: cleanVal(cols[trustIdx[0]]),
-                    // 修改：CBAS 欄位固定顯示前一日 (T-1) 數值
+                    // CBAS 欄位固定顯示前一日 (T-1) 數值
                     cbas: cbasS[1] || 0,
                     // CBAS 判定：前 1 日數據對比 T-1~T-11
                     isCbas10High: isCbasHigh(cbasS),
-                    // 參考價判定：維持今日對比過往區間
-                    isVol10High: isHigh(volS, 10),
-                    isRef20High: isHigh(refS, 20),
+                    // 成交量 10 日新高：今日 vs 過去 9 日
+                    isVol10High: isHigh(volS, 9),
+                    // 參考價 20 日新高：今日 vs 過去 19 日
+                    isRef20High: isHigh(refS, 19),
                     premiumVal: cleanVal(cols[idxPrem])
                 };
             });
